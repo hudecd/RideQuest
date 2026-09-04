@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1730"/>
+      <stop offset="0.48" stop-color="#123a66"/>
+      <stop offset="1" stop-color="#0b1027"/>
+    </linearGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.52" stop-color="#e8f4f6"/>
+      <stop offset="1" stop-color="#a7bbc5"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#20e7db"/>
+      <stop offset="0.5" stop-color="#4cf1ff"/>
+      <stop offset="1" stop-color="#5e7dff"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <circle cx="112" cy="118" r="92" fill="#29e5dc" opacity=".08"/>
+  <circle cx="404" cy="394" r="110" fill="#6374ff" opacity=".08"/>
+  <path d="M86 345c16-96 75-166 171-166 98 0 157 70 170 166H86Z" fill="#20e7db" opacity=".14" filter="url(#glow)"/>
+  <path d="M92 332c14-89 71-154 165-154 95 0 151 65 163 154H92Z" fill="url(#shell)" stroke="#ffffff" stroke-width="8"/>
+  <path d="M122 313c10-63 54-108 135-108 80 0 124 45 134 108l-31 14H153Z" fill="#d7e5e8" opacity=".6"/>
+  <path d="M144 314h224c-9 23-25 39-44 51H188c-19-12-35-28-44-51Z" fill="#071523"/>
+  <path d="M150 311c25-18 50-29 75-33 33-5 74 1 137 33l-13 23H164Z" fill="url(#visor)"/>
+  <path d="M180 235c10-32 36-51 80-56" fill="none" stroke="#ffffff" stroke-width="15" stroke-linecap="round" opacity=".75"/>
+  <path d="M216 180l8-28h35l8 28Z" fill="#071523" opacity=".7"/>
+  <path d="M281 181l9-28h34l8 35Z" fill="#071523" opacity=".7"/>
+  <path d="M108 349c39 10 80 14 147 14 67 0 116-4 149-14" fill="none" stroke="#4cf1ff" stroke-width="7" stroke-linecap="round" opacity=".9"/>
+  <circle cx="404" cy="104" r="18" fill="#4cf1ff" filter="url(#glow)"/>
+</svg>
