@@ -12,6 +12,12 @@ const TYPE_LABEL={trail:'Trail',enduro:'Enduro',bikepark:'Bikepark',freeride:'Fr
 let rides=load();
 let editingId=null;
 let tracker={recording:false,watchId:null,startTime:0,elapsedTimer:null,distanceKm:0,lastPos:null,locationLabel:'',startCoords:null};
+const CREW_KEY='ridequest-crew-v1';
+const defaultCrew=[{id:'damian',name:'Damian',handle:'@damian',avatar:'D',xp:0,rides:0},{id:'alex',name:'Alex',handle:'@alex_rides',avatar:'A',xp:840,rides:31},{id:'matej',name:'Matej',handle:'@matej.enduro',avatar:'M',xp:690,rides:26},{id:'lukas',name:'Lukas',handle:'@lukas.fw',avatar:'L',xp:515,rides:19},{id:'sam',name:'Sam',handle:'@samtrail',avatar:'S',xp:380,rides:14}];
+let crew=loadCrew();
+function loadCrew(){try{const raw=storage.getItem(CREW_KEY);const parsed=raw?JSON.parse(raw):null;return Array.isArray(parsed)?parsed:defaultCrew.map(x=>({...x}))}catch(e){return defaultCrew.map(x=>({...x}))}}
+function persistCrew(){storage.setItem(CREW_KEY,JSON.stringify(crew));}
+function syncDamianToCrew(){const t=totals();const me=crew.find(x=>x.id==='damian');if(me){me.xp=t.xp;me.rides=rides.length;persistCrew()}}
 
 function load(){
   try{
@@ -32,7 +38,7 @@ function fmtDate(s){if(!s)return '—';const [y,m,d]=s.split('-');return `${d}.$
 function minsText(m){const n=Math.max(0,Math.floor(Number(m)||0));const h=Math.floor(n/60),mm=n%60;return h?`${h} h ${mm} min`:`${mm} min`}
 function esc(s=''){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function showToast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>el.classList.remove('show'),1900)}
-function nav(screen){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(`screen-${screen}`).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.go===screen));if(screen==='dashboard')renderDashboard();if(screen==='history')renderHistory();if(screen==='stats')renderStats();window.scrollTo({top:0,behavior:'smooth'});}
+function nav(screen){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(`screen-${screen}`).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.go===screen));if(screen==='dashboard')renderDashboard();if(screen==='history')renderHistory();if(screen==='community')renderCommunity();if(screen==='stats')renderStats();window.scrollTo({top:0,behavior:'smooth'});}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){const target=b.dataset.go;if(target==='add')resetForm();nav(target)}});
 
 function renderDashboard(){
@@ -93,14 +99,27 @@ document.getElementById('rideForm').addEventListener('submit',e=>{
   const invalid=!data.date||!data.place||!['trail','enduro','bikepark','freeride'].includes(data.type)||!Number.isInteger(data.duration)||data.duration<1||data.duration>1440||data.distance!==null&&(data.distance<0||data.distance>1000)||!Number.isInteger(data.drops)||data.drops<0||data.drops>1000||![1,2,3,4,5].includes(data.rating);
   if(invalid){err.textContent='Skontroluj povinné údaje a hodnoty. Čísla nemôžu byť záporné.';err.classList.add('show');return}err.classList.remove('show');
   if(editingId){const old=rides.find(r=>r.id===editingId);Object.assign(old,data,{updatedAt:Date.now()});showToast('Jazda upravená');}else{rides.push({id:uid(),...data,createdAt:Date.now()});showToast(`Jazda uložená · +${xpFor(data)} XP`)}
-  persist();nav('dashboard');
+  persist();syncDamianToCrew();nav('dashboard');
 });
 
 function renderHistory(){
  const type=document.getElementById('filterType').value,sort=document.getElementById('sortOrder').value;let list=rides.filter(r=>type==='all'||r.type===type).sort((a,b)=>{const d=a.date.localeCompare(b.date);return sort==='newest'?-d:d});const el=document.getElementById('historyList');
  el.innerHTML=list.length?list.map(r=>`<article class="list-card"><div class="list-top"><div><div class="list-title">${esc(r.place)}</div><div class="ride-meta">${fmtDate(r.date)} · ${minsText(r.duration)}${r.distance!==null&&r.distance!==undefined?` · ${Number(r.distance).toFixed(1)} km`:''}</div></div><div class="tag">${TYPE_LABEL[r.type]}</div></div><div class="detail-grid"><div class="detail-stat"><b>${r.drops}</b><span>dropy</span></div><div class="detail-stat"><b>${r.rating}/5</b><span>hodnotenie</span></div><div class="detail-stat"><b>${Number(r.distance||0).toFixed(1)}</b><span>km</span></div><div class="detail-stat"><b>${minsText(r.duration)}</b><span>čas</span></div></div>${r.best?`<div style="margin-top:10px;color:#d7e0e6;font-size:13px"><b>Moment:</b> ${esc(r.best)}</div>`:''}${r.notes?`<div style="margin-top:7px;color:#929fab;font-size:12px">${esc(r.notes)}</div>`:''}<div class="list-actions"><button data-edit="${r.id}">Upraviť</button><button data-delete="${r.id}">Vymazať</button></div></article>`).join(''):`<div class="empty">Žiadne jazdy pre zvolený filter.</div>`;
 }
-document.getElementById('filterType').addEventListener('change',renderHistory);document.getElementById('sortOrder').addEventListener('change',renderHistory);document.getElementById('historyList').addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openEdit(edit.dataset.edit);if(del){const r=rides.find(x=>x.id===del.dataset.delete);if(r&&confirm(`Vymazať jazdu „${r.place}“?`)){rides=rides.filter(x=>x.id!==r.id);persist();renderHistory();renderDashboard();showToast('Jazda vymazaná')}}});
+document.getElementById('filterType').addEventListener('change',renderHistory);document.getElementById('sortOrder').addEventListener('change',renderHistory);document.getElementById('historyList').addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openEdit(edit.dataset.edit);if(del){const r=rides.find(x=>x.id===del.dataset.delete);if(r&&confirm(`Vymazať jazdu „${r.place}“?`)){rides=rides.filter(x=>x.id!==r.id);persist();syncDamianToCrew();renderHistory();renderDashboard();showToast('Jazda vymazaná')}}});
+
+let boardMode='xp';
+function renderCommunity(){
+  syncDamianToCrew();
+  const sorted=[...crew].sort((a,b)=>boardMode==='xp'?(b.xp-a.xp||b.rides-a.rides):(b.rides-a.rides||b.xp-a.xp));
+  const top=sorted.slice(0,3);
+  const podium=document.getElementById('podium');
+  const podiumOrder=[top[1],top[0],top[2]];
+  podium.innerHTML=podiumOrder.filter(Boolean).map((r,i)=>{const place=[2,1,3][i];const val=boardMode==='xp'?`${r.xp} XP`:`${r.rides} jázd`;return `<div class="pod ${place===1?'first':''}"><div class="place">#${place}</div><div class="avatar">${esc(r.avatar)}</div><div class="name">${esc(r.name)}</div><div class="metric">${val}</div></div>`}).join('');
+  document.getElementById('leaderboard').innerHTML=sorted.map((r,i)=>{const val=boardMode==='xp'?`${r.xp} XP`:`${r.rides} jázd`;const sub=boardMode==='xp'?`${r.rides} jázd`:`${r.xp} XP`;return `<article class="rank-card ${r.id==='damian'?'me':''}"><div class="rank-num ${i<3?'top':''}">#${i+1}</div><div class="rider-main"><div class="avatar">${esc(r.avatar)}</div><div><div class="rider-name">${esc(r.name)}${r.id==='damian'?' · TY':''}</div><div class="rider-handle">${esc(r.handle)} · ${sub}</div></div></div><div class="rider-stat"><div class="value">${val}</div><div class="label">${boardMode==='xp'?'skóre':'aktivita'}</div></div></article>`}).join('');
+  document.querySelectorAll('[data-board]').forEach(b=>b.classList.toggle('active',b.dataset.board===boardMode));
+}
+document.querySelectorAll('[data-board]').forEach(b=>b.addEventListener('click',()=>{boardMode=b.dataset.board;renderCommunity()}));
 
 function renderStats(){
  const t=totals(),avg=rides.length?(t.ratingSum/rides.length).toFixed(1):'0.0',counts={trail:0,enduro:0,bikepark:0,freeride:0};rides.forEach(r=>counts[r.type]++);const most=rides.length?TYPE_LABEL[Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0]]:'—';
@@ -109,5 +128,5 @@ function renderStats(){
 }
 
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
-resetForm();renderDashboard();
+resetForm();renderDashboard();renderCommunity();
 window.addEventListener('beforeunload',()=>{if(tracker.recording)navigator.geolocation?.clearWatch(tracker.watchId)});
